@@ -26,7 +26,6 @@ dataSpilloverDateIsolate = data.table(read_csv("output processed/20210223/dataSp
   
 # start MCMC runs
 setSeed = scan('input/setSeed.txt')
-# setSeed = setSeed+1000
 
 ## set up clusters
 cl = makeCluster(10) #detectCores()
