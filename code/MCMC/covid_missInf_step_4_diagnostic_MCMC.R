@@ -1,8 +1,7 @@
+library(coda)
 library(data.table)
 
-
-# to delete
-load('C:/Users/rachaelpung/Desktop/Secured thumb/Projects/COVID-19/Missed infections/output processed/outputTotalChain_100000_iter_period_5.RData')
+load('output processed/outputTotalChain_100000_iter_period_5.RData')
 outputTotal = copy(outputTotalChain_period_5)
 
 # autocorrelation plot
@@ -15,13 +14,6 @@ for(param in 1:4){
 }
 
 # effective sample size
-n = dim(outputTotal$param)[1]
-acf = acf(outputTotal$param[,1], lag.max = 10000, plot = FALSE)$acf
-acf_sums = acf[1:999] + acf[2:1000]
-denominator = 1 + 2*sum(acf[2:(which(acf_sums < 0)[1]+1)])
-
-n_eff = n/denominator
-
 n = length(outputTotal$param[seq(1,100000,10),1])
 acf = acf(outputTotal$param[seq(1,100000,10),1], lag.max = 1000, plot = FALSE)$acf
 acf_sums = acf[1:999] + acf[2:1000]
@@ -29,14 +21,9 @@ denominator = 1 + 2*sum(acf[2:(which(acf_sums < 0)[1]+1)])
 
 n_eff = n/denominator
 
-library(coda)
-
+# effective sample size
 param = mcmc(outputTotal$param[seq(1,1450000,10),4])
 effectiveSize(param)
-
-
-
-
 
 
 # Gelman-Rubin convergence diagnostic
@@ -62,9 +49,6 @@ compute_Rhat <- function(chains){
   
   return(Rhat)
 }
-
-
-
 
 
 load('outputTotalChain_1_30000_iter_period_1.RData')
