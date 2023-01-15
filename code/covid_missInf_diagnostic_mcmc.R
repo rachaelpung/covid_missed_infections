@@ -1,26 +1,22 @@
 # load storage
-list.file = dir('output raw/20210906 test runs/wild neg binom total', pattern = 'period_3')
-list.file=list.file[c(1,2,3)] 
-load(paste('output raw/20210906 test runs/wild neg binom total', list.file[1], sep=''))
+list.file = dir('output raw/20220521/wild neg binom/', pattern = 'period_4')
 chain = list()
-chain[[1]] = store$theta
+list.file
 
-for(f in 1:20){
-  load(paste('output raw/20210906 test runs/wild neg binom total/', list.file[f], sep=''))
+for(f in 1:8){
+  load(paste('output raw/20220521/wild neg binom/', list.file[f], sep=''))
+  # load(paste('output raw/test/', list.file[f], sep=''))
   chain[[f]] = store$theta
 }
 
 
 # trace plot
-niter = 60000
-xmax = 1000
-xmax = 5000
-xmax = 10000
-xmax = 60000
+niter = 150000
+xmax = 150000
 nparam = ncol(chain[[1]])
 par(mfrow=c(2,3))
 
-source('codes/v6/covid_missInf_plot_colour.R')
+source('codes/covid_missInf_plot_colour.R')
 chain.colour = rep(c(CONFIG$colsLight2[4],CONFIG$colsLight2[3],CONFIG$colsLight2[8]), length.out = 20)
 
 for(p in 1:nparam){ 
@@ -29,11 +25,11 @@ for(p in 1:nparam){
   
   col.name = colnames(chain[[1]])[p]
   
-  if(grepl('prop.import.M', col.name)) {ymin = 0; ymax = 50}
-  if(grepl('R', col.name)) {ymin = 0; ymax = 35}
-  if(grepl('eff.contact.tracing', col.name)) {ymin = 0; ymax = 1}
-  if(grepl('eff.case.finding', col.name)) {ymin = 0; ymax = 1}
-  if(grepl('rep.k', col.name)) {ymin = 0; ymax = 50}
+  if(grepl('prop_import_M', col.name)) {ymin = 0; ymax = 50}
+  if(grepl('R', col.name)) {ymin = 0; ymax = 50}
+  if(grepl('eff_contact_tracing', col.name)) {ymin = 0; ymax = 1}
+  if(grepl('eff_case_finding', col.name)) {ymin = 0; ymax = 1}
+  if(grepl('rep_k', col.name)) {ymin = 0; ymax = 50}
   
   for(c in 1:length(chain)){ # length(chain)
     
@@ -47,49 +43,33 @@ for(p in 1:nparam){
   
 }
 
+# incidence plot
 par(mfrow=c(2,2))
 # plot
 xmin=5000
-plot(store$doy, store$obs.daily.local.N.linked, type = 'l' )
-lines(store$doy, apply(store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
-lines(store$doy, apply(store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
+plot(store$doy, store$obs_daily_local_N_linked, type = 'l' )
+lines(store$doy, apply(store$mod_daily_local_N_linked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
+lines(store$doy, apply(store$mod_daily_local_N_linked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
 
+plot(store$doy, store$obs_daily_local_N_unlinked, type = 'l' )
+lines(store$doy, apply(store$mod_daily_local_N_unlinked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
+lines(store$doy, apply(store$mod_daily_local_N_unlinked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
 
-plot(store$doy, store$obs.daily.local.N.unlinked, type = 'l' )
-lines(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
-lines(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
+plot(store$doy, store$obs_daily_local_N_unlinked+store$obs_daily_local_N_linked, type = 'l' )
+lines(store$doy, apply(store$mod_daily_local_N_unlinked_by_doy_isolate[xmin:xmax,1:length(store$doy)]+
+                         store$mod_daily_local_N_linked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
+lines(store$doy, apply(store$mod_daily_local_N_unlinked_by_doy_isolate[xmin:xmax,1:length(store$doy)]+
+                         store$mod_daily_local_N_linked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
+lines(store$doy, apply(store$mod_daily_local_N_unlinked_by_doy_isolate[xmin:xmax,1:length(store$doy)]+
+                         store$mod_daily_local_N_linked_by_doy_isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.05), col='red')
 
-plot(store$doy, store$obs.daily.local.N.unlinked+store$obs.daily.local.N.linked, type = 'l' )
+store.M = store$mod_daily_local_M_unlinked[xmin:xmax,1:length(store$doy)]+store$mod_daily_local_M_linked[xmin:xmax,1:length(store$doy)]
+plot(store$doy, apply(store.M, 2, quantile, 0.75), col='red', type = 'l')
+lines(store$doy, apply(store.M, 2, quantile, 0.5), col='red')
+lines(store$doy, apply(store.M, 2, quantile, 0.25), col='red')
 
-
-plot(store$doy, store$obs.daily.local.N.unlinked+store$obs.daily.local.N.linked, type = 'l' )
-lines(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,1:length(store$doy)]+
-                         store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, median), col='red')
-lines(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,1:length(store$doy)]+
-                         store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.95), col='red')
-lines(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,1:length(store$doy)]+
-                         store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,1:length(store$doy)], 2, quantile, 0.05), col='red')
-
-
-plot(457:596, obs.data$daily.local.N[457:596])
-as.numeric(as.Date('2021-07-05')-as.Date('2019-12-31'))
-plot(553:596,obs.data$daily.local.N[553:596])
-lines(c(store$doy,seq(1,13,1)+558), 
-      apply(store$mod.daily.local.N.unlinked.by.doy.isolate[xmin:xmax,], 2, median)+
-      apply(store$mod.daily.local.N.linked.by.doy.isolate[xmin:xmax,], 2, median),
-      col = 'red')
-points(558,obs.data$daily.local.N[558], col='red')
-
-
-
-plot(457:596,obs.data$daily.arrival.import.N[457:596])
-
-plot(apply(store$mod.daily.local.N.unlinked.by.doy.isolate[500:xmax,]+
-             store$mod.daily.local.N.linked.by.doy.isolate[500:xmax,], 2, median))
-
-
-View(store$theta[1:xmax,])
-store$LL[1:xmax][]
+test=store$mod_daily_local_M_unlinked[xmin:xmax,1:length(store$doy)]+store$mod_daily_local_M_linked[xmin:xmax,1:length(store$doy)]
+apply(test, 2, quantile, 0.5)
 
 
 # autocorrelation plot
@@ -193,11 +173,3 @@ for(p in 1:1){
 
 
 
-
-
-
-plot(store$doy, apply(store$mod.daily.local.N.unlinked.by.doy.isolate[500:xmax,1:length(store$doy)], 2, median), col='red')
-lines(store$doy, store$obs.daily.local.N.unlinked )
-
-plot(store$doy, apply(store$mod.daily.local.N.linked.by.doy.isolate[500:xmax,1:length(store$doy)], 2, median), col='red')
-lines(store$doy, store$obs.daily.local.N.linked )

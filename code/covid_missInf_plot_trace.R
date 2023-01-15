@@ -1,59 +1,16 @@
-source('codes/v6/covid_missInf_load_library.R')
-source('codes/v6/covid_missInf_plot_colour.R')
+source('codes/covid_missInf_load_library.R')
+source('codes/covid_missInf_plot_colour.R')
 
-# load posterior
-period=c(1,2,3,4,5)
-period.variant='W'
+load('input/obs_data.RData')
+load('input/time_period.RData')
+load('output processed/20220521/theta_all.RData')
 
-theta.period.all = list()
-theta.period = list()
+param_time_period = time_period[variant=='W']
 
-for(period.num in period){
-  
-  list.file = dir('output raw/20210906 test runs/wild neg binom total/', pattern = paste(period.variant, '_period_', period.num, sep=''))
-  list.file
-  
-  for(f in 1:length(list.file)){
-    
-    load(paste('output raw/20210906 test runs/wild neg binom total/', list.file[f], sep=''))
-    
-    # burn-in first 5000 
-    retain = seq(5001,60000,1)
-    theta.period[[f]] = as.data.table(store$theta[retain,])
-    theta.period[[f]]$chain = ceiling(f/4)
-    theta.period[[f]]$period = period.num
-    
-    print(f)
-  }
-  
-  theta.period.all[[period.num]] = rbindlist(theta.period, use.names = T)
-  
-  print(period.num)
-}
-
-rm(theta.period)
-
-# load observed data
-load('input/obs.data.RData')
-
-# load time period
-param.time.period = read_excel('data/param.xlsx', sheet = 'time.period.param')
-param.time.period = data.table(param.time.period)
-setnames(param.time.period, c('period', 'date.start', 'date.end'))
-
-param.time.period = param.time.period[grep(period.variant, period)]
-param.time.period[, period:=gsub(period.variant,'',period)]
-param.time.period[, period:=as.numeric(period)]
-
-param.time.period[, doy.start := as.numeric(as.Date(date.start)-as.Date('2019-12-31'))]
-param.time.period[, doy.end := as.numeric(as.Date(date.end)-as.Date('2019-12-31'))]
-param.time.period[, duration := doy.end-doy.start+1]
-
-
-# plot
+# trace plot for wild type
 paneller=function(row = 1,column=1)
 {
-  niter = xmax = 275000
+  niter = xmax = 5800
   xlm=c(0,xmax)
   if(row == 1) ylm=c(0,5)
   if(row == 2) ylm=c(0,5)
@@ -61,9 +18,9 @@ paneller=function(row = 1,column=1)
   if(row == 4) ylm=c(0,1)
   if(row == 5) ylm=c(0,5)
   
-  if(row == 1 & column == 2) ylm=c(0,75)
-  if(row == 1 & column == 4) ylm=c(0,25)
-  if(row == 1 & column == 5) ylm=c(0,50)
+  if(row == 1 & column == 2) ylm=c(0,200)
+  if(row == 1 & column == 4) ylm=c(0,50)
+  if(row == 1 & column == 5) ylm=c(0,100)
   
   
   innermargins = c(2,3,2,2)
@@ -73,51 +30,51 @@ paneller=function(row = 1,column=1)
   
   
   iteration = seq_len(niter)
-  chain.colour = c(CONFIG$colsLight2[4],CONFIG$colsLight2[3],CONFIG$colsLight2[8],CONFIG$colsLight2[9])
+  chain.colour = c(CONFIG$colsLight2[4],CONFIG$colsLight2[3],CONFIG$colsLight2[1],CONFIG$colsLight2[5])
   
-  for(chain.num in 1:4){
-    data = theta.period.all[[column]][chain==chain.num][[row]]
+  for(chain_num in 1:4){
+    data = theta_all[[column]][chain==chain_num][[row]]
     
     # convert to average daily missed imports
     if(row == 1){
-      data = data * mean(obs.data$daily.arrival.import.N[param.time.period$doy.start[column]:param.time.period$doy.end[column]])
+      data = data * mean(obs_data$daily_arrival_import_N[param_time_period$doy_start[column]:param_time_period$doy_end[column]])
     }
     
-    grid.lines(iteration, data, default.units = 'native',gp=gpar(col=chain.colour[chain.num]))
+    grid.lines(iteration, data, default.units = 'native',gp=gpar(col=chain.colour[chain_num]))
   }
   
 
   popViewport()
   pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
   
-  grid.xaxis(at=c(0,100000,200000),label = c(0,100000,200000))
+  grid.xaxis(at=c(0,2500,5000),label = c(0,2500,5000),gp = gpar(fontsize = 13))
  
   
-  if(row == 1 & column %in% c(1,3)) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1))
-  if(row == 1 & column == 2) grid.yaxis(at=seq(0,75,by=25),label=seq(0,75,by=25))
-  if(row == 1 & column == 4) grid.yaxis(at=seq(0,25,by=5),label=seq(0,25,by=5))
-  if(row == 1 & column == 5) grid.yaxis(at=seq(0,50,by=10),label=seq(0,50,by=10))
+  if(row == 1 & column %in% c(1,3)) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 2) grid.yaxis(at=seq(0,200,by=50),label=seq(0,200,by=50),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 4) grid.yaxis(at=seq(0,50,by=10),label=seq(0,50,by=10),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 5) grid.yaxis(at=seq(0,100,by=25),label=seq(0,100,by=25),gp = gpar(fontsize = 13))
 
-  if(row == 2) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1))
+  if(row == 2) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1),gp = gpar(fontsize = 13))
 
   
-  if(row == 3) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25))
-  if(row == 4) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25))
-  if(row == 5) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1))
+  if(row == 3) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25),gp = gpar(fontsize = 13))
+  if(row == 4) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25),gp = gpar(fontsize = 13))
+  if(row == 5) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1),gp = gpar(fontsize = 13))
   
-  if(row == 1 & column == 1) grid.text('Jan 18 - Feb 29', y=unit(8,'lines'))
-  if(row == 1 & column == 2) grid.text('Mar 1 - Apr 6', y=unit(8,'lines'))
-  if(row == 1 & column == 3) grid.text('Apr 7 - Jun 18', y=unit(8,'lines'))
-  if(row == 1 & column == 4) grid.text('Jun 19 - Jul 12', y=unit(8,'lines'))
-  if(row == 1 & column == 5) grid.text('Jul 13 - Dec 31', y=unit(8,'lines'))
+  if(row == 1 & column == 1) grid.text('Jan 18 - Feb 29', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 2) grid.text('Mar 1 - Apr 6', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 3) grid.text('Apr 7 - Jun 18', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 4) grid.text('Jun 19 - Jul 12', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 5) grid.text('Jul 13 - Dec 31', y=unit(6,'lines'),gp = gpar(fontsize = 13))
   
-  if(column == 1 & row == 1) grid.text('Avg daily missed\nimportation',x=unit(-3.5,'lines'),rot=90)
-  if(column == 1 & row == 2) grid.text('R',x=unit(-3.5,'lines'),rot=90)
-  if(column == 1 & row == 3) grid.text(bquote(~epsilon[link]~' (%)'),x=unit(-3.5,'lines'),rot=90) #~epsilon[op]
-  if(column == 1 & row == 4) grid.text(bquote(~epsilon[unlink]~' (%)'),x=unit(-3.5,'lines'),rot=90) #~epsilon[op*'\'']
-  if(column == 1 & row == 5) grid.text('k\'',x=unit(-3.5,'lines'),rot=90)
+  if(column == 1 & row == 1) grid.text('Avg daily missed\nimportation',x=unit(-2.5,'lines'),rot=90,gp = gpar(fontsize = 13))
+  if(column == 1 & row == 2) grid.text('R',x=unit(-2.5,'lines'),rot=90,gp = gpar(fontsize = 13))
+  if(column == 1 & row == 3) grid.text(bquote(~epsilon[link]~' (%)'),x=unit(-2.5,'lines'),rot=90,gp = gpar(fontsize = 13)) #~epsilon[op]
+  if(column == 1 & row == 4) grid.text(bquote(~epsilon[unlink]~' (%)'),x=unit(-2.5,'lines'),rot=90,gp = gpar(fontsize = 13)) #~epsilon[op*'\'']
+  if(column == 1 & row == 5) grid.text('k\'',x=unit(-2.5,'lines'),rot=90,gp = gpar(fontsize = 13))
   
-  if(column == 3 & row == 1) grid.text('Lockdown of borders', y=unit(4.5,'lines'), gp = gpar(fontsize = 8))
+  if(column == 3 & row == 1) grid.text('Lockdown of borders', y=unit(3.5,'lines'), gp = gpar(fontsize = 10))
   
   grid.lines(c(0,1,1,0,0),c(0,0,1,1,0))
   
@@ -127,18 +84,20 @@ paneller=function(row = 1,column=1)
 }
 
 
-png('figure/trace_wild_total.png',height=25,width=30,units='cm',res=300,pointsize=10)
+png('figure/trace_wild_supp.png',height=25,width=30,units='cm',res=300,pointsize=10)
 pushViewport(plotViewport(c(2,2,2,1)))
 pushViewport(viewport(layout=grid.layout(nrow=5,ncol=5)))
 
 for(r in 1:5){
   for(c in 1:5){
     paneller(r,c)
-    
+
     print(c(r,c))
   }
 }
 
+# paneller(1,1)
+# paneller(1,3)
 
 grid.text('iteration',y=unit(-3,'lines'))
 
@@ -153,73 +112,20 @@ rm(paneller)
 
 
 
+param_time_period = time_period[variant=='D']
 
-
-################## delta
-
-
-# load posterior
-period=c(1,2,3,4,5)
-period.variant='D'
-
-theta.period.all = list()
-theta.period = list()
-
-for(period.num in period){
-  
-  list.file = dir('output raw/20210906 test runs/delta neg binom total/', pattern = paste(period.variant, '_period_', period.num, sep=''))
-  list.file
-  
-  for(f in 1:length(list.file)){
-    
-    load(paste('output raw/20210906 test runs/delta neg binom total/', list.file[f], sep=''))
-    
-    # burn-in first 5000 
-    retain = seq(5001,60000,1)
-    theta.period[[f]] = as.data.table(store$theta[retain,])
-    theta.period[[f]]$chain = ceiling(f/5)
-    theta.period[[f]]$period = period.num
-    
-    print(f)
-  }
-  
-  theta.period.all[[period.num]] = rbindlist(theta.period, use.names = T)
-  
-  print(period.num)
-}
-
-rm(theta.period)
-
-# load observed data
-load('input/obs.data.RData')
-
-# load time period
-param.time.period = read_excel('data/param.xlsx', sheet = 'time.period.param')
-param.time.period = data.table(param.time.period)
-setnames(param.time.period, c('period', 'date.start', 'date.end'))
-
-param.time.period = param.time.period[grep(period.variant, period)]
-param.time.period[, period:=gsub(period.variant,'',period)]
-param.time.period[, period:=as.numeric(period)]
-
-param.time.period[, doy.start := as.numeric(as.Date(date.start)-as.Date('2019-12-31'))]
-param.time.period[, doy.end := as.numeric(as.Date(date.end)-as.Date('2019-12-31'))]
-param.time.period[, duration := doy.end-doy.start+1]
-
-
-# plot
+# trace plot for delta
 paneller=function(row = 1,column=1)
 {
-  niter = xmax = 275000
+  niter = xmax = 5800
   xlm=c(0,xmax)
   if(row == 1) ylm=c(0,50)
   if(row == 2) ylm=c(0,5)
-  if(row == 3) ylm=c(0,1)
-  if(row == 4) ylm=c(0,1)
-  if(row == 5) ylm=c(0,5)
+  # if(row == 3) ylm=c(0,1)
+  # if(row == 4) ylm=c(0,1)
+  if(row == 3) ylm=c(0,5)
   
-  
-  if(row == 2 & column == 4) ylm=c(0,30)
+  if(row == 2 & column ==3) ylm=c(0,7)
   
   innermargins = c(2,3,2,2)
   
@@ -228,50 +134,51 @@ paneller=function(row = 1,column=1)
   
   
   iteration = seq_len(niter)
-  chain.colour = c(CONFIG$colsLight2[4],CONFIG$colsLight2[3],CONFIG$colsLight2[8],CONFIG$colsLight2[9])
+  chain.colour = c(CONFIG$colsLight2[4],CONFIG$colsLight2[3],CONFIG$colsLight2[1],CONFIG$colsLight2[5])
   
-  for(chain.num in 1:4){
-    data = theta.period.all[[column]][chain==chain.num][[row]]
+  if(row==1) extract_row=1
+  if(row==2) extract_row=2
+  if(row==3) extract_row=5
+  
+  for(chain_num in 1:4){
+    data = theta_all[[column+10]][chain==chain_num][[extract_row]]
     
     # convert to average daily missed imports
     if(row == 1){
-      data = data * mean(obs.data$daily.arrival.import.N[param.time.period$doy.start[column]:param.time.period$doy.end[column]])
+      data = data * mean(obs_data$daily_arrival_import_N[param_time_period$doy_start[column]:param_time_period$doy_end[column]])
     }
     
-    grid.lines(iteration, data, default.units = 'native',gp=gpar(col=chain.colour[chain.num]))
+    grid.lines(iteration, data, default.units = 'native',gp=gpar(col=chain.colour[chain_num]))
   }
   
   
   popViewport()
   pushViewport(plotViewport(innermargins,xscale=xlm,yscale=ylm))
   
-  grid.xaxis(at=c(0,100000,200000),label = c(0,100000,200000))
+  grid.xaxis(at=c(0,2500,5000),label = c(0,2500,5000),gp = gpar(fontsize = 13))
   
   
-  if(row == 1 & column == 1) grid.yaxis(at=seq(0,50,by=10),label=seq(0,50,by=10))
-  if(row == 1 & column != 1) grid.yaxis(at=seq(0,50,by=10),label=seq(0,50,by=10))
-
+  if(row == 1) grid.yaxis(at=seq(0,50,by=10),label=seq(0,50,by=10),gp = gpar(fontsize = 13))
+  if(row == 2 & column != 3) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1),gp = gpar(fontsize = 13))
+  if(row == 2 & column == 3) grid.yaxis(at=seq(0,7,by=1),label=seq(0,7,by=1),gp = gpar(fontsize = 13))
+ 
+  # if(row == 3) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25),gp = gpar(fontsize = 13))
+  # if(row == 4) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25),gp = gpar(fontsize = 13))
+  if(row == 3) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1),gp = gpar(fontsize = 13))
   
-  if(row == 2 & column != 4) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1))
-  if(row == 2 & column == 4) grid.yaxis(at=seq(0,30,by=5),label=seq(0,30,by=5))
+  if(row == 1 & column == 1) grid.text('Apr 1 - May 12', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 2) grid.text('May 13 - Jun 30', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 3) grid.text('Jul 1 - Jul 17', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  if(row == 1 & column == 4) grid.text('Jul 18 - Aug 18', y=unit(6,'lines'),gp = gpar(fontsize = 13))
+  # if(row == 1 & column == 5) grid.text('Jul 1 - Aug 18', y=unit(6,'lines'),gp = gpar(fontsize = 13))
   
-  if(row == 3) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25))
-  if(row == 4) grid.yaxis(at=seq(0,1,by=0.25),label=seq(0,100,by=25))
-  if(row == 5) grid.yaxis(at=seq(0,5,by=1),label=seq(0,5,by=1))
+  if(column == 1 & row == 1) grid.text('Avg daily missed\nimportation',x=unit(-3,'lines'),rot=90,gp = gpar(fontsize = 13))
+  if(column == 1 & row == 2) grid.text('R',x=unit(-3,'lines'),rot=90,gp = gpar(fontsize = 13))
+  # if(column == 1 & row == 3) grid.text(bquote(~epsilon[link]~' (%)'),x=unit(-3,'lines'),rot=90,gp = gpar(fontsize = 13)) #~epsilon[op]
+  # if(column == 1 & row == 4) grid.text(bquote(~epsilon[unlink]~' (%)'),x=unit(-3,'lines'),rot=90,gp = gpar(fontsize = 13)) #~epsilon[op*'\'']
+  if(column == 1 & row == 3) grid.text('k\'',x=unit(-3,'lines'),rot=90,gp = gpar(fontsize = 13))
   
-  if(row == 1 & column == 1) grid.text('Apr 1 - May 15', y=unit(8,'lines'))
-  if(row == 1 & column == 2) grid.text('May 16 - Jun 13', y=unit(8,'lines'))
-  if(row == 1 & column == 3) grid.text('Jun 14 - Jul 5', y=unit(8,'lines'))
-  if(row == 1 & column == 4) grid.text('Jul 6 - Jul 11', y=unit(8,'lines'))
-  if(row == 1 & column == 5) grid.text('Jul 13 - Aug 18', y=unit(8,'lines'))
-  
-  if(column == 1 & row == 1) grid.text('Avg daily missed\nimportation',x=unit(-3.5,'lines'),rot=90)
-  if(column == 1 & row == 2) grid.text('R',x=unit(-3.5,'lines'),rot=90)
-  if(column == 1 & row == 3) grid.text(bquote(~epsilon[link]~' (%)'),x=unit(-3.5,'lines'),rot=90) #~epsilon[op]
-  if(column == 1 & row == 4) grid.text(bquote(~epsilon[unlink]~' (%)'),x=unit(-3.5,'lines'),rot=90) #~epsilon[op*'\'']
-  if(column == 1 & row == 5) grid.text('k\'',x=unit(-3.5,'lines'),rot=90)
-  
-  # if(column == 3 & row == 1) grid.text('Lockdown of borders', y=unit(4.5,'lines'), gp = gpar(fontsize = 8))
+  if(column != 1 & row == 1) grid.text('Assume no missed\nimported cases due to\nstrict border controls', y=unit(3.5,'lines'), gp = gpar(fontsize = 10))
   
   grid.lines(c(0,1,1,0,0),c(0,0,1,1,0))
   
@@ -281,12 +188,12 @@ paneller=function(row = 1,column=1)
 }
 
 
-png('figure/trace_delta_total.png',height=25,width=30,units='cm',res=300,pointsize=10)
+png('figure/trace_delta_supp.png',height=15,width=24,units='cm',res=300,pointsize=10)
 pushViewport(plotViewport(c(2,2,2,1)))
-pushViewport(viewport(layout=grid.layout(nrow=5,ncol=5)))
+pushViewport(viewport(layout=grid.layout(nrow=3,ncol=4)))
 
-for(r in 1:5){
-  for(c in 1:5){
+for(r in 1:3){
+  for(c in 1:4){
     paneller(r,c)
     
     print(c(r,c))
